@@ -1,30 +1,29 @@
+
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. LOCALIZATION (多语言和多区域准备) ---
+    // --- 1. LOCALIZATION ---
     const loc = {
         loading: "正在连接AI大厨...",
-        noResults: "抱歉，没有找到完全符合您条件的菜谱，请尝试放宽预算或更换口味。",
+        noResults: "抱歉，AI没有找到合适的菜谱，请尝试放宽您的条件。",
         error: "网络开小差了，请稍后再试 T_T",
         adopt: "采纳此食谱",
         adopted: "已采纳 ✔",
-        summaryTitle: "今日饮食小结",
-        costLabel: "今日已消费",
-        caloriesLabel: "今日已摄入",
         noLog: "今天还未记录任何饮食哦。",
         yuan: "元",
-        kcal: "千卡"
+        kcal: "千卡",
+        minutes: "分钟"
     };
 
-    // --- 2. STATE MANAGEMENT (状态管理) ---
+    // --- 2. STATE MANAGEMENT ---
     let state = {
         dailyLog: { cost: 0, calories: 0, adoptedRecipeIds: [] },
         currentRecipeInModal: null,
-        allFetchedRecipes: {} // 用于存储从后端获取的所有菜谱详情
+        allFetchedRecipes: {}
     };
     let dailyLogChart;
 
-    // --- 3. DOM ELEMENT REFERENCES (DOM元素引用) ---
-    const dinersSlider = document.getElementById('diners'), dinersValue = document.getElementById('diners-value');
-    const budgetSlider = document.getElementById('budget'), budgetValue = document.getElementById('budget-value');
+    // --- 3. DOM REFERENCES ---
+    const dinersInput = document.getElementById('diners-input');
+    const budgetInput = document.getElementById('budget-input');
     const tasteOptions = document.getElementById('taste-options');
     const generateBtn = document.getElementById('generate-btn'), refreshBtn = document.getElementById('refresh-btn');
     const welcomeMessage = document.getElementById('welcome-message'), loadingSpinner = document.getElementById('loading-spinner');
@@ -34,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const recipeModal = document.getElementById('recipe-modal'), modalContent = document.getElementById('modal-content');
     const modalCloseBtn = document.getElementById('modal-close-btn'), modalAdoptBtn = document.getElementById('modal-adopt-btn');
 
-    // --- 4. CORE LOGIC & DATA HANDLING (核心逻辑与数据处理) ---
+    // --- 4. CORE LOGIC & DATA HANDLING ---
     function saveState() { localStorage.setItem('yaowish_state', JSON.stringify(state)); }
     function loadState() {
         const savedState = localStorage.getItem('yaowish_state');
@@ -44,21 +43,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 parsedState.dailyLog.adoptedRecipeIds = [];
             }
             state = parsedState;
-             // 确保 allFetchedRecipes 存在
-            if (!state.allFetchedRecipes) {
-                state.allFetchedRecipes = {};
-            }
+            if (!state.allFetchedRecipes) state.allFetchedRecipes = {};
         }
     }
 
     async function fetchRecommendations() {
         const prefs = {
-            diners: parseInt(dinersSlider.value),
-            budget: parseInt(budgetSlider.value),
+            diners: parseInt(dinersInput.value) || 1,
+            budget: parseInt(budgetInput.value) || 0,
             taste: tasteOptions.querySelector('.active')?.textContent || '无'
         };
 
-        // 显示加载动画
         welcomeMessage.classList.add('hidden');
         recipeCardsContainer.innerHTML = '';
         resultsHeader.classList.remove('hidden');
@@ -66,33 +61,24 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingSpinner.querySelector('p').textContent = loc.loading;
 
         try {
-            // 使用fetch调用后端API
             const response = await fetch('/api/getRecommendations', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(prefs),
             });
 
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
             const recipes = await response.json();
             
-            // 存储获取到的菜谱详情
             recipes.forEach(recipe => {
                 state.allFetchedRecipes[recipe.id] = recipe;
             });
-
             displayRecipes(recipes);
-
         } catch (error) {
             console.error('Fetch error:', error);
             recipeCardsContainer.innerHTML = `<p class="text-center text-red-500 col-span-full">${loc.error}</p>`;
         } finally {
-            // 无论成功或失败，都隐藏加载动画
             loadingSpinner.classList.add('hidden');
         }
     }
@@ -111,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateModalAdoptButton();
     }
 
-    // --- 5. UI RENDERING & UPDATES (UI渲染与更新) ---
+    // --- 5. UI RENDERING & UPDATES ---
     function initializeChart() {
         const ctx = document.getElementById('dailyLogChart').getContext('2d');
         dailyLogChart = new Chart(ctx, {
@@ -125,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.dailyLog.cost === 0 && state.dailyLog.calories === 0) {
             logSummary.innerHTML = `<p>${loc.noLog}</p>`;
         } else {
-            logSummary.innerHTML = `<p>${loc.costLabel}: <strong class="text-green-600">${state.dailyLog.cost.toFixed(2)}</strong> ${loc.yuan}</p><p>${loc.caloriesLabel}: <strong class="text-orange-600">${state.dailyLog.calories}</strong> ${loc.kcal}</p>`;
+            logSummary.innerHTML = `<p>今日已消费: <strong class="text-green-600">${state.dailyLog.cost.toFixed(2)}</strong> ${loc.yuan}</p><p>今日已摄入: <strong class="text-orange-600">${state.dailyLog.calories}</strong> ${loc.kcal}</p>`;
         }
         if (dailyLogChart) {
             dailyLogChart.data.datasets[0].data = [state.dailyLog.cost, state.dailyLog.calories];
@@ -135,24 +121,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function displayRecipes(recipes) {
         recipeCardsContainer.innerHTML = '';
-        if (recipes.length === 0) {
+        if (!recipes || recipes.length === 0) {
             recipeCardsContainer.innerHTML = `<p class="text-center text-gray-500 col-span-full">${loc.noResults}</p>`;
             return;
         }
         recipes.forEach(recipe => {
-            const card = document.createElement('div');
-            card.className = 'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-transform hover:scale-105';
-            card.dataset.recipeId = recipe.id;
-            card.innerHTML = `
-                <img src="${recipe.image}" alt="${recipe.name}" class="w-full h-40 object-cover">
-                <div class="p-4">
-                    <h3 class="font-bold text-lg truncate">${recipe.name}</h3>
-                    <div class="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>🔥 ${recipe.calories} ${loc.kcal}</span>
-                        <span>💰 ¥${recipe.cost.toFixed(2)}</span>
+            const cardHTML = `
+                <div class="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer" data-recipe-id="${recipe.id}">
+                    <img src="${recipe.image}" alt="${recipe.name}" class="w-full h-40 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400/cccccc/FFFFFF?text=Image+Not+Found';">
+                    <div class="p-4">
+                        <h3 class="font-bold text-lg truncate">${recipe.name}</h3>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>🔥 ${recipe.calories} ${loc.kcal}</span>
+                            <span>💰 ¥${recipe.cost.toFixed(2)}</span>
+                        </div>
                     </div>
                 </div>`;
-            recipeCardsContainer.appendChild(card);
+            recipeCardsContainer.insertAdjacentHTML('beforeend', cardHTML);
         });
     }
     
@@ -160,10 +145,25 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentRecipeInModal = recipe;
         document.getElementById('modal-image').style.backgroundImage = `url(${recipe.image})`;
         document.getElementById('modal-title').textContent = recipe.name;
+        document.getElementById('modal-cooking-time').textContent = `${recipe.cookingTime} ${loc.minutes}`;
         document.getElementById('modal-calories').textContent = `🔥 ${recipe.calories} ${loc.kcal}`;
         document.getElementById('modal-cost').textContent = `💰 ¥${recipe.cost.toFixed(2)}`;
-        document.getElementById('modal-ingredients').textContent = recipe.ingredients;
-        document.getElementById('modal-steps').textContent = recipe.steps;
+        
+        const ingredientsList = document.getElementById('modal-ingredients');
+        ingredientsList.innerHTML = '';
+        (recipe.ingredients || []).forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            ingredientsList.appendChild(li);
+        });
+
+        const stepsList = document.getElementById('modal-steps');
+        stepsList.innerHTML = '';
+        (recipe.steps || []).forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            stepsList.appendChild(li);
+        });
         
         updateModalAdoptButton();
         
@@ -191,18 +191,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 6. EVENT LISTENERS & HANDLERS (事件监听与处理) ---
+    // --- 6. EVENT LISTENERS & HANDLERS ---
     function setupEventListeners() {
-        dinersSlider.addEventListener('input', () => dinersValue.textContent = dinersSlider.value);
-        budgetSlider.addEventListener('input', () => budgetValue.textContent = budgetSlider.value);
+        document.querySelectorAll('.number-input-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.input);
+                const step = parseInt(button.dataset.step);
+                const min = parseInt(input.min);
+                let currentValue = parseInt(input.value) || 0;
+                let newValue = currentValue + step;
+                if (newValue < min) {
+                    newValue = min;
+                }
+                input.value = newValue;
+            });
+        });
+
         tasteOptions.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON') {
                 tasteOptions.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
             }
         });
+
         generateBtn.addEventListener('click', fetchRecommendations);
         refreshBtn.addEventListener('click', fetchRecommendations);
+
         tabButtons.forEach(btn => btn.addEventListener('click', (e) => {
             const targetTab = e.currentTarget.dataset.tab;
             tabButtons.forEach(btn => btn.classList.remove('active'));
@@ -212,20 +226,22 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             document.getElementById('main-content-area').scrollTop = 0;
         }));
+
         recipeCardsContainer.addEventListener('click', (e) => {
             const card = e.target.closest('[data-recipe-id]');
             if (card) {
                 const recipeId = parseInt(card.dataset.recipeId);
-                const recipe = state.allFetchedRecipes[recipeId]; // 从存储中获取详情
+                const recipe = state.allFetchedRecipes[recipeId];
                 if (recipe) openModal(recipe);
             }
         });
+
         modalCloseBtn.addEventListener('click', closeModal);
         modalAdoptBtn.addEventListener('click', adoptCurrentRecipe);
         recipeModal.addEventListener('click', (e) => { if (e.target === recipeModal) closeModal(); });
     }
 
-    // --- 7. INITIALIZATION (初始化) ---
+    // --- 7. INITIALIZATION ---
     function initializeApp() {
         loadState();
         initializeChart();

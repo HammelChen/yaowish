@@ -14,6 +14,7 @@ body {
 .taste-tag.active {
     background-color: #A5A58D;
     color: #FFFFFF;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .tab-btn.active {
     color: #6B705C;
@@ -23,7 +24,7 @@ body {
     transition: opacity 0.3s ease;
 }
 .modal-content {
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 .main-content-area {
     -ms-overflow-style: none;
@@ -31,4 +32,54 @@ body {
 }
 .main-content-area::-webkit-scrollbar {
     display: none;
+}
+.feedback-btn {
+    transition: all 0.2s ease-in-out;
+}
+.feedback-btn:hover {
+    transform: scale(1.1);
+}
+.feedback-btn.selected {
+    transform: scale(1.1);
+    filter: saturate(1.5);
+}
+
+/* ADDED: Styles for the new number input */
+.number-input-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid #e5e7eb; /* gray-200 */
+    border-radius: 0.5rem; /* rounded-lg */
+    overflow: hidden;
+}
+.number-input-field {
+    width: 100%;
+    border: none;
+    text-align: center;
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 700; /* font-bold */
+    color: #6B705C;
+    padding: 0.5rem 0;
+    -moz-appearance: textfield; /* Firefox */
+}
+.number-input-field:focus {
+    outline: none;
+    ring-width: 0;
+}
+.number-input-field::-webkit-outer-spin-button,
+.number-input-field::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.number-input-btn {
+    background-color: #f3f4f6; /* gray-100 */
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: 1.25rem; /* text-xl */
+    color: #4b5563; /* gray-600 */
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.number-input-btn:hover {
+    background-color: #e5e7eb; /* gray-200 */
 }
